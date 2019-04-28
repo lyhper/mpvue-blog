@@ -18,7 +18,13 @@
 </template>
 
 <script>
-import { getTitle, getDate, formatDate, appendToken } from "@/utils";
+import { 
+  getTitle, 
+  getDate, 
+  formatDate, 
+  appendToken,
+  generateRetryFunc,
+} from "@/utils";
 
 export default {
   name: "listView",
@@ -46,55 +52,48 @@ export default {
 
   methods: {
     loadList() {
-      wx.showLoading({
-        title: "加载中"
-      });
-
-      wx.cloud.callFunction({
-        // 云函数名称
-        name: "proxy",
-        // 传给云函数的参数
-        data: {
-          url: appendToken(
-            "https://api.github.com/repos/lyhper/blog-markdown/contents/posts?"
-          )
-        },
-        success: res => {
-          const lists = handleData(res.result || []);
-
-          this.lists = lists;
-          wx.hideLoading();
-        },
-        fail: () => {
-          wx.hideLoading();
-          wx.showToast({
-            title: "小店暂时打烊了",
-            icon: "error",
-            duration: 10000
+      generateRetryFunc(() => {
+      
+        return new Promise((resolve, reject) => {
+          wx.showLoading({
+            title: "加载中"
           });
-        }
-      });
 
-      // wx.request({
-      //   url: appendToken(
-      //     "https://api.github.com/repos/lyhper/blog-markdown/contents/posts?"
-      //   ),
-      //   success: res => {
-      //     const lists = handleData(res.data || []);
+          wx.cloud.callFunction({
+            // 云函数名称
+            name: "proxy",
+            // 传给云函数的参数
+            data: {
+              url: appendToken(
+                "https://api.github.com/repos/lyhper/blog-markdown/contents/posts?"
+              )
+            },
+            success: res => {
+              const lists = handleData(res.result || []);
 
-      //     this.lists = lists;
-      //     wx.hideLoading();
-      //   },
-      //   fail: () => {
-      //     wx.hideLoading();
-      //     wx.showToast({
-      //       title: "小店暂时打烊了",
-      //       icon: "error",
-      //       duration: 10000
-      //     });
-      //   }
-      // });
+              this.lists = lists;
+              wx.hideLoading();
+
+              resolve();
+            },
+            fail: () => {
+              reject();
+            }
+          });
+        });
+
+      }, () => {
+        wx.hideLoading();
+
+        wx.showToast({
+          title: "开小差中",
+          icon: "error",
+          duration: 10000
+        });
+      }, 10)();
+      
     }
+
   }
 };
 
